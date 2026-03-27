@@ -331,7 +331,7 @@ input,select,textarea,button{font-family:var(--font);}
         <div class="sb-avatar">AD</div>
         <div class="sb-user-info">
           <div class="sb-user-name">Administrador</div>
-          <div class="sb-user-role">admin@tfmotos.com.br</div>
+          <div class="sb-user-role"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8beaefe6e2e5cbffede6e4ffe4f8a5e8e4e6a5e9f9">[email&#160;protected]</a></div>
         </div>
       </div>
     </div>
@@ -374,7 +374,7 @@ input,select,textarea,button{font-family:var(--font);}
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toast-container"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ══════════════════════════════════════════
 // STATE & DATA
 // ══════════════════════════════════════════
@@ -426,7 +426,17 @@ const SAMPLE = {
     {id:'V001',cliente:'João Silva',tipo:'Moto',marca:'Honda',modelo:'CG 160',ano:2021,placa:'ABC-1234',cor:'Vermelho',km:12500},
     {id:'V002',cliente:'João Silva',tipo:'Moto',marca:'Honda',modelo:'Bros 160',ano:2019,placa:'XYZ-9876',cor:'Prata',km:24300},
     {id:'V003',cliente:'Pedro Costa',tipo:'Moto',marca:'Suzuki',modelo:'Burgman 400',ano:2022,placa:'GHI-9012',cor:'Preto',km:8900},
-  ]
+  ],
+  servicos: [
+    {id:'SV001',nome:'Troca de Óleo',cat:'Lubrificação',tempo:30,preco:80,comissao:15,desc:'Troca de óleo + filtro',ativo:true},
+    {id:'SV002',nome:'Revisão Completa',cat:'Revisão',tempo:120,preco:350,comissao:15,desc:'Revisão de 10.000 km completa',ativo:true},
+    {id:'SV003',nome:'Troca de Pneu',cat:'Pneus',tempo:45,preco:60,comissao:10,desc:'Remoção, montagem e balanceamento',ativo:true},
+    {id:'SV004',nome:'Regulagem de Motor',cat:'Motor',tempo:90,preco:200,comissao:15,desc:'Regulagem e diagnóstico de motor',ativo:true},
+    {id:'SV005',nome:'Freios Dianteiro',cat:'Freios',tempo:60,preco:120,comissao:15,desc:'Substituição de pastilhas e disco',ativo:true},
+    {id:'SV006',nome:'Troca de Corrente',cat:'Transmissão',tempo:40,preco:100,comissao:10,desc:'Troca de kit relação completo',ativo:true},
+    {id:'SV007',nome:'Elétrica Geral',cat:'Elétrica',tempo:60,preco:150,comissao:15,desc:'Diagnóstico e reparo elétrico',ativo:true},
+    {id:'SV008',nome:'Higienização',cat:'Estética',tempo:30,preco:50,comissao:10,desc:'Lavagem e limpeza completa',ativo:false},
+  ],
 };
 
 let appData = JSON.parse(localStorage.getItem('tfmotos_data') || 'null') || JSON.parse(JSON.stringify(SAMPLE));
@@ -620,6 +630,7 @@ function renderPage(){
     case 'pagar':     area.innerHTML=pagarPage(); break;
     case 'receber':   area.innerHTML=receberPage(); break;
     case 'fluxo':     area.innerHTML=fluxoPage(); initFluxoChart(); break;
+    case 'servicos':  area.innerHTML=servicosPage(); break;
     default:          area.innerHTML=placeholderPage(appState.page); break;
   }
 }
@@ -1562,6 +1573,200 @@ document.addEventListener('keydown',e=>{
     doLogin();
   }
 });
+
+// ══════════════════════════════════════════
+// MÓDULO DE SERVIÇOS
+// ══════════════════════════════════════════
+function servicosPage(){
+  const cats=['Lubrificação','Revisão','Pneus','Motor','Freios','Transmissão','Elétrica','Estética','Outros'];
+  const catColors={
+    'Lubrificação':'badge-blue','Revisão':'badge-green','Pneus':'badge-orange',
+    'Motor':'badge-red','Freios':'badge-red','Transmissão':'badge-purple',
+    'Elétrica':'badge-orange','Estética':'badge-blue','Outros':'badge-gray'
+  };
+  if(!appData.servicos) appData.servicos=[];
+  const q=(appState.filters.search||'').toLowerCase();
+  const filtered=appData.servicos.filter(s=>
+    !q||s.nome.toLowerCase().includes(q)||s.cat.toLowerCase().includes(q)
+  );
+  const ativos=appData.servicos.filter(s=>s.ativo).length;
+  const totalServicos=appData.servicos.length;
+  const precoMedio=totalServicos>0?(appData.servicos.reduce((a,s)=>a+s.preco,0)/totalServicos):0;
+  const cats_unicas=[...new Set(appData.servicos.map(s=>s.cat))].length;
+  const porCategoria={};
+  appData.servicos.forEach(s=>{
+    if(!porCategoria[s.cat]) porCategoria[s.cat]={count:0,total:0};
+    porCategoria[s.cat].count++;
+    porCategoria[s.cat].total+=s.preco;
+  });
+  const rows=filtered.map(s=>`
+    <tr>
+      <td class="tbl-mono tbl-red tbl-bold">${s.id}</td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span class="tbl-bold">${s.nome}</span>
+          <span style="font-size:11px;color:var(--t3)">${s.desc||''}</span>
+        </div>
+      </td>
+      <td><span class="badge ${catColors[s.cat]||'badge-gray'} badge-sm">${s.cat}</span></td>
+      <td class="tbl-center tbl-muted">
+        <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${s.tempo} min
+        </div>
+      </td>
+      <td class="tbl-num text-green tbl-bold">${fmt(s.preco)}</td>
+      <td class="tbl-num tbl-muted">${s.comissao}%</td>
+      <td class="tbl-num tbl-muted text-orange">${fmt(s.preco*s.comissao/100)}</td>
+      <td>${s.ativo?'<span class="badge badge-green badge-sm">Ativo</span>':'<span class="badge badge-gray badge-sm">Inativo</span>'}</td>
+      <td><div class="tbl-actions">
+        <button class="btn-icon" onclick="openServicoModal('edit','${s.id}')" title="Editar">${icon('edit')}</button>
+        <button class="btn-icon danger" onclick="deleteServico('${s.id}')" title="Excluir">${icon('trash')}</button>
+      </div></td>
+    </tr>`).join('');
+  const catCards=Object.entries(porCategoria).slice(0,6).map(([cat,info])=>`
+    <div style="background:var(--bg4);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+      <div>
+        <span class="badge ${catColors[cat]||'badge-gray'} badge-sm" style="margin-bottom:4px">${cat}</span>
+        <div style="color:var(--t3);font-size:11px">${info.count} serviço${info.count>1?'s':''}</div>
+      </div>
+      <div class="text-green tbl-bold">${fmt(info.total/info.count)}<div style="color:var(--t3);font-size:10px;font-weight:400;text-align:right">p/ serviço</div></div>
+    </div>`).join('');
+  return `<div class="page-pad">
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--red)"></div>
+        <div class="kpi-icon" style="background:var(--red-dim)">${icon('wrench',20,'#c0181a')}</div>
+        <div class="kpi-label">Total de serviços</div>
+        <div class="kpi-value">${totalServicos}</div>
+        <div class="kpi-sub">${ativos} ativos · ${totalServicos-ativos} inativos</div>
+      </div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--green)"></div>
+        <div class="kpi-icon" style="background:var(--gdim)">${icon('dollar',20,'#22c55e')}</div>
+        <div class="kpi-label">Preço médio</div>
+        <div class="kpi-value" style="font-size:18px">${fmt(precoMedio)}</div>
+        <div class="kpi-sub">Por serviço</div>
+      </div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--blue)"></div>
+        <div class="kpi-icon" style="background:var(--bdim)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="kpi-label">Tempo médio</div>
+        <div class="kpi-value">${totalServicos>0?Math.round(appData.servicos.reduce((a,s)=>a+s.tempo,0)/totalServicos):0}<span style="font-size:14px;font-weight:400;color:var(--t2)"> min</span></div>
+        <div class="kpi-sub">Por serviço</div>
+      </div>
+      <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
+        <div class="kpi-icon" style="background:var(--pdim)">${icon('award',20,'#a855f7')}</div>
+        <div class="kpi-label">Categorias</div>
+        <div class="kpi-value">${cats_unicas}</div>
+        <div class="kpi-sub">Tipos de serviço</div>
+      </div>
+    </div>
+    ${Object.keys(porCategoria).length>0?`
+    <div class="table-card" style="margin-bottom:16px">
+      <div class="table-toolbar"><span class="table-title">Resumo por categoria</span></div>
+      <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">${catCards}</div>
+    </div>`:''}
+    <div class="page-header">
+      <div class="search-wrap"><span class="search-icon">${icon('search',13)}</span>
+        <input class="input search-input" style="width:280px" placeholder="Buscar serviço ou categoria..." value="${appState.filters.search||''}" oninput="appState.filters.search=this.value;renderPage()">
+      </div>
+      <button class="btn btn-primary" onclick="openServicoModal('new')">${icon('plus',13)} Novo serviço</button>
+    </div>
+    <div class="table-card">
+      <table class="tbl"><thead><tr>
+        <th>Código</th><th>Serviço</th><th>Categoria</th><th class="tbl-center">Tempo</th>
+        <th class="tbl-num">Preço</th><th class="tbl-num">Comissão</th><th class="tbl-num">Valor comissão</th><th>Status</th><th>Ações</th>
+      </tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--t3);padding:32px">Nenhum serviço cadastrado.</td></tr>'}</tbody></table>
+      <div class="tbl-footer">
+        <span>${filtered.length} serviço(s)</span>
+        <span>Total catálogo: <strong class="text-green">${fmt(appData.servicos.reduce((a,s)=>a+s.preco,0))}</strong></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openServicoModal(mode, id=null){
+  const s=id?appData.servicos.find(x=>x.id===id):null;
+  const isNew=mode==='new';
+  const cats=['Lubrificação','Revisão','Pneus','Motor','Freios','Transmissão','Elétrica','Estética','Outros'];
+  showModal(`<div class="modal-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="modal-icon">${icon('wrench',16,'#c0181a')}</div>
+      <h2 class="modal-title">${isNew?'Novo Serviço':'Editar Serviço'}</h2>
+    </div>
+    <button class="modal-close" onclick="closeModal()">${icon('x')}</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row form-row-2 mb14">
+      <div class="form-group"><label class="form-label">Nome do serviço *</label>
+        <input id="sv-nome" class="input" placeholder="Ex: Troca de Óleo" value="${isNew?'':(s?s.nome:'')}"></div>
+      <div class="form-group"><label class="form-label">Categoria</label>
+        <select id="sv-cat" class="select">${cats.map(c=>`<option ${!isNew&&s&&s.cat===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group mb14"><label class="form-label">Descrição</label>
+      <input id="sv-desc" class="input" placeholder="Breve descrição do serviço..." value="${isNew?'':(s?s.desc:'')}"></div>
+    <div class="form-row form-row-3 mb14">
+      <div class="form-group"><label class="form-label">Tempo estimado (min)</label>
+        <input id="sv-tempo" class="input" type="number" min="1" placeholder="60" value="${isNew?60:(s?s.tempo:60)}"></div>
+      <div class="form-group"><label class="form-label">Preço de venda (R$)</label>
+        <input id="sv-preco" class="input" type="number" step="0.01" min="0" placeholder="0,00" value="${isNew?0:(s?s.preco:0)}" oninput="calcComissaoPreview()"></div>
+      <div class="form-group"><label class="form-label">Comissão (%)</label>
+        <input id="sv-com" class="input" type="number" min="0" max="100" step="0.5" placeholder="15" value="${isNew?15:(s?s.comissao:15)}" oninput="calcComissaoPreview()"></div>
+    </div>
+    <div id="comissao-preview" style="background:var(--bg4);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--t2);margin-bottom:14px">
+      Valor da comissão: <strong class="text-green" id="cv-val">${fmt(isNew?0:(s?(s.preco*s.comissao/100):0))}</strong>
+    </div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select id="sv-ativo" class="select">
+        <option value="1" ${isNew||!s||s.ativo?'selected':''}>Ativo</option>
+        <option value="0" ${!isNew&&s&&!s.ativo?'selected':''}>Inativo</option>
+      </select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveServico('${isNew?'new':(s?s.id:'')}')">${icon('check-circle',13)} Salvar</button>
+  </div>`);
+}
+
+function calcComissaoPreview(){
+  const preco=parseFloat(document.getElementById('sv-preco').value)||0;
+  const com=parseFloat(document.getElementById('sv-com').value)||0;
+  const el=document.getElementById('cv-val');
+  if(el) el.textContent=fmt(preco*com/100);
+}
+
+function saveServico(idOrNew){
+  const nome=document.getElementById('sv-nome').value.trim();
+  if(!nome){toast('Informe o nome do serviço','error');return;}
+  const preco=parseFloat(document.getElementById('sv-preco').value)||0;
+  if(!preco){toast('Informe o preço do serviço','error');return;}
+  const data={
+    nome,
+    cat:document.getElementById('sv-cat').value,
+    desc:document.getElementById('sv-desc').value,
+    tempo:parseInt(document.getElementById('sv-tempo').value)||60,
+    preco,
+    comissao:parseFloat(document.getElementById('sv-com').value)||15,
+    ativo:document.getElementById('sv-ativo').value==='1',
+  };
+  if(!appData.servicos) appData.servicos=[];
+  if(idOrNew==='new'){
+    data.id='SV'+String(appData.servicos.length+1).padStart(3,'0');
+    appData.servicos.push(data);
+    toast('Serviço "'+data.nome+'" cadastrado!');
+  } else {
+    const idx=appData.servicos.findIndex(s=>s.id===idOrNew);
+    if(idx>=0) appData.servicos[idx]={...appData.servicos[idx],...data};
+    toast('Serviço atualizado!');
+  }
+  saveData();closeModal();renderPage();
+}
+
+function deleteServico(id){
+  if(!confirm('Excluir este serviço? Esta ação não pode ser desfeita.')) return;
+  appData.servicos=appData.servicos.filter(s=>s.id!==id);
+  saveData();toast('Serviço excluído','warn');renderPage();
+}
 </script>
 </body>
 </html>
